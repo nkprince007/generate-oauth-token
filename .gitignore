@@ -1,2 +1,3 @@
 generate-oauth-token
 vendor
+.DS_Store

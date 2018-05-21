@@ -24,3 +24,7 @@ $ generate-oauth-token -provider=github
 ...
 # Enter the details and proceed to obtain the token
 ```
+
+## Example configuration for OAuth2 client
+
+![GitHub OAuth Configuration](./.images/github-config.png)
