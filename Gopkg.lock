@@ -14,7 +14,7 @@
     "context",
     "context/ctxhttp"
   ]
-  revision = "57065200b4b034a1c8ad54ff77069408c2218ae6"
+  revision = "8e0cdda24ed423affc8f35c241e5e9b16180338e"
 
 [[projects]]
   branch = "master"
@@ -22,9 +22,10 @@
   packages = [
     ".",
     "github",
+    "gitlab",
     "internal"
   ]
-  revision = "a582fe72a3544273cdcc8891c874262a415fb136"
+  revision = "dd5f5d8e78ce062a4aa881dff95a94f2a0fd405a"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -43,6 +44,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2d285e927fe30957836d653e0d076e0d811a0f0b86a698d3f1a8cae3edb1c076"
+  inputs-digest = "085a8fcf37587c62fe1e232c54ff88d54a7f9841ea133bb91a7d5b87807fe5e5"
   solver-name = "gps-cdcl"
   solver-version = 1

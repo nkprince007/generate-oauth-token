@@ -96,6 +96,8 @@ func main() {
 	switch provider {
 	case "github":
 		go doGithubOAuthDance(done, code)
+	case "gitlab":
+		go doGitlabOAuthDance(done, code)
 	default:
 		fmt.Println("generate-oauth-token: Incorrect usage")
 		flag.Usage()
