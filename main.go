@@ -16,7 +16,19 @@ import (
 	"runtime"
 	"syscall"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	"golang.org/x/oauth2"
+)
+
+// Provider indicates the hosting provider
+type Provider string
+
+const (
+	// GitHub indicates that the required provider is github
+	GitHub Provider = "github"
+	// GitLab indicates that the required provider is gitlab
+	GitLab Provider = "gitlab"
 )
 
 var code = make(chan string, 1)
@@ -29,6 +41,15 @@ func prettyPrintJSON(body []byte) {
 		return
 	}
 	fmt.Println(string(prettyJSON.Bytes()))
+}
+
+func readSecretFromStdin(prompt string) string {
+	fmt.Println(prompt)
+	byteSecret, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(byteSecret)
 }
 
 func openBrowser(url string) {
@@ -87,25 +108,16 @@ func generateToken(
 	endpoint oauth2.Endpoint, scopes []string, testURL string, newAppURL string,
 	done chan<- int, code <-chan string,
 ) {
-	var clientID string
-	var clientSecret string
-
 	ctx := context.Background()
 	fmt.Println("Create your OAuth application here (" + newAppURL + ")")
-	fmt.Print("Enter your client ID please: ")
-	if _, err := fmt.Scan(&clientID); err != nil {
-		log.Fatal(err)
-	}
+	clientID := readSecretFromStdin("Enter your client ID please: ")
+	clientSecret := readSecretFromStdin("Enter your client secret please: ")
 
-	fmt.Print("Enter your client secret please: ")
-	if _, err := fmt.Scan(&clientSecret); err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Print("Enter your OAuth scopes please (seperated by space): ")
+	fmt.Print("Enter your OAuth scopes please (seperated by space, enter EOF " +
+		"or ^D to stop): ")
 	for {
 		var scope string
-		if _, err := fmt.Scanln(&scope); err != nil {
+		if _, err := fmt.Scan(&scope); err != nil {
 			break
 		}
 		if scope != "" {
@@ -145,9 +157,6 @@ func generateToken(
 	}
 
 	client := conf.Client(ctx, tok)
-	fmt.Println("OAuth access token: " + tok.AccessToken)
-	fmt.Println("OAuth access token type: " + tok.TokenType)
-
 	resp, err := client.Get(testURL)
 	if err != nil {
 		log.Fatal(err)
@@ -169,17 +178,18 @@ func main() {
 		&provider,
 		"provider",
 		"github",
-		"the provider for which oauth token is to be generated")
+		"the provider for which oauth token is to be generated, one of "+
+			"('github', 'gitlab')")
 	flag.Parse()
 
 	fmt.Println("Use OAuth application server homepage as " +
 		"'http://localhost:8000/'")
 	done := make(chan int)
 
-	switch provider {
-	case "github":
+	switch Provider(provider) {
+	case GitHub:
 		go doGithubOAuthDance(done, code)
-	case "gitlab":
+	case GitLab:
 		go doGitlabOAuthDance(done, code)
 	default:
 		fmt.Println("generate-oauth-token: Incorrect usage")
