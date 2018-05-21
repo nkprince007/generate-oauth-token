@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +15,8 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
+
+	"golang.org/x/oauth2"
 )
 
 var code = make(chan string, 1)
@@ -77,6 +81,85 @@ func startServer(done chan int) {
 	case err := <-errs:
 		fmt.Printf("\nReceived: %v\n", err)
 	}
+}
+
+func generateToken(
+	endpoint oauth2.Endpoint, scopes []string, testURL string, newAppURL string,
+	done chan<- int, code <-chan string,
+) {
+	var clientID string
+	var clientSecret string
+
+	ctx := context.Background()
+	fmt.Println("Create your OAuth application here (" + newAppURL + ")")
+	fmt.Print("Enter your client ID please: ")
+	if _, err := fmt.Scan(&clientID); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Print("Enter your client secret please: ")
+	if _, err := fmt.Scan(&clientSecret); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Print("Enter your OAuth scopes please (seperated by space): ")
+	for {
+		var scope string
+		if _, err := fmt.Scanln(&scope); err != nil {
+			break
+		}
+		if scope != "" {
+			scopes = append(scopes, scope)
+		}
+	}
+
+	conf := &oauth2.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Scopes:       scopes,
+		RedirectURL:  "http://localhost:8000",
+		Endpoint:     endpoint,
+	}
+
+	// Redirect user to consent page to ask for permission
+	// for the scopes specified above.
+	url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline)
+	fmt.Println("\nVisit the following URL for the auth dialog:")
+	fmt.Printf("%s\n", url)
+	fmt.Println("Awaiting authentication...")
+	openBrowser(url)
+
+	// Use the authorization code that is pushed to the redirect
+	// URL. Exchange will do the handshake to retrieve the
+	// initial access token. The HTTP Client returned by
+	// conf.Client will refresh the token as necessary.
+	tok, err := conf.Exchange(ctx, <-code)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if byteToken, err := json.Marshal(*tok); err != nil {
+		log.Fatal(err)
+	} else {
+		prettyPrintJSON(byteToken)
+	}
+
+	client := conf.Client(ctx, tok)
+	fmt.Println("OAuth access token: " + tok.AccessToken)
+	fmt.Println("OAuth access token type: " + tok.TokenType)
+
+	resp, err := client.Get(testURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	prettyPrintJSON(body)
+	done <- 0
 }
 
 func main() {
